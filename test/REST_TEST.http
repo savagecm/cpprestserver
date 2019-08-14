@@ -1,0 +1,4 @@
+POST http://127.0.0.1:6502/v1/ivmero/api/image/line HTTP/1.1
+content-type: application/json
+
+{"colour":0,"positionx":[0,0],"positiony":[100,100]}

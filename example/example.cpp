@@ -29,16 +29,26 @@
 #include "usr_interrupt_handler.hpp"
 #include "runtime_utils.hpp"
 #include "microsvc_controller.hpp"
+#include "logger/simple_logger.hpp"
 
 using namespace web;
 using namespace cfx;
 
 int main(int argc, const char *argv[])
 {
+
 	InterruptHandler::hookSIGINT();
 
+	std::unique_ptr<simpleLogger> boostloggerUptr(new simpleLogger());
+	INIT_LOGGER(boostloggerUptr);
+	SET_LOG_LEVEL(debug);
+	if (CHECK_LOG_LEVEL(debug))
+	{
+		__LOG(debug, "rest server started");
+	}
+
 	MicroserviceController server;
-	server.setEndpoint("http://host_auto_ip4:6502/v1/ivmero/api");
+	server.setEndpoint("http://host_auto_ip4d:6502/v1/ivmero/api");
 
 	try
 	{

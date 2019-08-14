@@ -28,30 +28,70 @@
 
 #include <string>
 #include <cpprest/http_listener.h>
+#include "restServer/network_utils.hpp"
 #include <pplx/pplxtasks.h>
 #include "controller.hpp"
 
 using namespace web;
 using namespace http::experimental::listener;
 
-namespace cfx {
-    class BasicController {
-    protected:
-        http_listener _listener; // main micro service network endpoint
+namespace cfx
+{
+class BasicController
+{
+protected:
+    http_listener _listener; // main micro service network endpoint
 
-    public:
-        BasicController();
-        ~BasicController();
+public:
+    BasicController() = default;
+    ~BasicController() = default;
 
-        void setEndpoint(const std::string & value);
-        std::string endpoint() const;
-        pplx::task<void> accept();
-        pplx::task<void> shutdown();
+    void setEndpoint(const std::string &value)
+    {
+        uri endpointURI(value);
+        uri_builder endpointBuilder;
 
-        virtual void initRestOpHandlers() { 
-            /* had to be implemented by the child class */ 
+        endpointBuilder.set_scheme(endpointURI.scheme());
+        if (endpointURI.host() == "host_auto_ip4")
+        {
+            endpointBuilder.set_host(NetworkUtils::hostIP4());
         }
+        else if (endpointURI.host() == "host_auto_ip6")
+        {
+            endpointBuilder.set_host(NetworkUtils::hostIP6());
+        }
+        else
+        {
+            endpointBuilder.set_host("127.0.0.1");
+        }
+        endpointBuilder.set_port(endpointURI.port());
+        endpointBuilder.set_path(endpointURI.path());
 
-        std::vector<utility::string_t> requestPath(const http_request & message);
-    };
-}
+        _listener = http_listener(endpointBuilder.to_uri());
+    }
+    std::string endpoint() const
+    {
+        return _listener.uri().to_string();
+    }
+    pplx::task<void> accept()
+    {
+        initRestOpHandlers();
+        return _listener.open();
+    }
+    pplx::task<void> shutdown()
+    {
+        return _listener.close();
+    }
+
+    virtual void initRestOpHandlers()
+    {
+        /* had to be implemented by the child class */
+    }
+
+    std::vector<utility::string_t> requestPath(const http_request &message)
+    {
+        auto relativePath = uri::decode(message.relative_uri().path());
+        return uri::split_path(relativePath);
+    }
+};
+} // namespace cfx
