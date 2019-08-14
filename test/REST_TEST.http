@@ -1,4 +1,20 @@
+###
 POST http://127.0.0.1:6502/v1/ivmero/api/image/line HTTP/1.1
 content-type: application/json
 
-{"colour":0,"positionx":[0,0],"positiony":[100,100]}
+{"colour":-1,"positionx":[0,0],"positiony":[100,100]}
+###
+POST http://127.0.0.1:6502/v1/ivmero/api/image/circle HTTP/1.1
+content-type: application/json
+
+{"colour":1,"position":[0,0],"radius":100}
+###
+POST http://127.0.0.1:6502/v1/ivmero/api/image/rectangle HTTP/1.1
+content-type: application/json
+
+{"colour":0,"position":[0,0],"height":100,"wide":100}
+###
+POST http://127.0.0.1:6502/v1/ivmero/api/image/point HTTP/1.1
+content-type: application/json
+
+{"colour":0,"position":[0,0]}

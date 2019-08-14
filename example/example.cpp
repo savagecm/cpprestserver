@@ -48,7 +48,7 @@ int main(int argc, const char *argv[])
 	}
 
 	MicroserviceController server;
-	server.setEndpoint("http://host_auto_ip4d:6502/v1/ivmero/api");
+	server.setEndpoint("http://host_auto_ip4a:6502/v1/ivmero/api");
 
 	try
 	{

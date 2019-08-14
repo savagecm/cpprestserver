@@ -25,7 +25,7 @@
 //
 
 #pragma once
-
+#include <cpprest/http_msg.h>
 #include <basic_controller.hpp>
 #include "logger/logger.hpp"
 
@@ -73,7 +73,35 @@ public:
         {
             if (path[0] == "image")
             {
-                ProcessImage(message, path);
+                web::json::value jValue;
+                try
+                {
+                    jValue = message.extract_json().get();
+                }
+                catch (const http_exception &e)
+                {
+                    // Print error.
+                    if (CHECK_LOG_LEVEL(debug))
+                    {
+                        __LOG(debug, "invalid json format, error is : " << e.what());
+                    }
+                    message.reply(status_codes::BadRequest);
+                    return;
+                }
+                switch (ProcessImage(jValue, path, methods::POST))
+                {
+                case imageRet::SUCCESS:
+                    message.reply(status_codes::OK, jValue);
+                    break;
+                case imageRet::NOT_SUPPORT:
+                    message.reply(status_codes::NotFound);
+                    break;
+                case imageRet::BAD_REQUEST:
+                    message.reply(status_codes::BadRequest);
+                    break;
+                default:
+                    message.reply(status_codes::BadRequest);
+                }
             }
             else
             {
@@ -122,7 +150,14 @@ public:
         _listener.support(methods::DEL, std::bind(&MicroserviceController::handleDelete, this, std::placeholders::_1));
         _listener.support(methods::PATCH, std::bind(&MicroserviceController::handlePatch, this, std::placeholders::_1));
     }
-    void ProcessImage(http_request message, std::vector<utility::string_t> path)
+    enum class imageRet
+    {
+        SUCCESS = 0,
+        NOT_SUPPORT,
+        BAD_REQUEST
+
+    };
+    imageRet ProcessImage(web::json::value jValue, std::vector<utility::string_t> path, const http::method &method)
     {
         if (CHECK_LOG_LEVEL(debug))
         {
@@ -138,28 +173,12 @@ public:
                     __LOG(debug, "in the line case");
                 }
                 //{"colour":0,"positionx":[0,0],"positiony":[100,100]}
-
-                web::json::value jValue;
-                try
-                {
-                    jValue = message.extract_json().get();
-                }
-                catch (const http_exception &e)
-                {
-                    // Print error.
-                    if (CHECK_LOG_LEVEL(debug))
-                    {
-                        __LOG(debug, "invalid json format, error is : " << e.what());
-                    }
-                    message.reply(status_codes::NotFound);
-                }
-              
                 int colour = jValue.at("colour").as_integer();
                 json::array posx = jValue.at("positionx").as_array();
                 json::array posy = jValue.at("positiony").as_array();
                 if (posx.size() != 2 || posy.size() != 2)
                 {
-                    message.reply(status_codes::NotFound);
+                    return imageRet::BAD_REQUEST;
                 }
                 int posxx = posx.at(0).as_integer();
                 int posxy = posx.at(1).as_integer();
@@ -170,21 +189,80 @@ public:
                 {
                     __LOG(debug, "the line info is : " << posxx << ":" << posxy << ":" << posyx << ":" << posyy << ", colour is : " << colour);
                 }
-                message.reply(status_codes::OK);
             }
             else if (path[1] == "circle")
             {
-                  if (CHECK_LOG_LEVEL(debug))
+                if (CHECK_LOG_LEVEL(debug))
                 {
                     __LOG(debug, "in the circle case");
                 }
-                
+                //{"colour":0,"position":[0,0],"radius":100}
+
+                int colour = jValue.at("colour").as_integer();
+                int radius = jValue.at("radius").as_integer();
+                json::array pos = jValue.at("position").as_array();
+
+                if (pos.size() != 2)
+                {
+                    return imageRet::BAD_REQUEST;
+                }
+                int posx = pos.at(0).as_integer();
+                int posy = pos.at(1).as_integer();
+
+                if (CHECK_LOG_LEVEL(debug))
+                {
+                    __LOG(debug, "the circle info is : " << posx << ":" << posy << ", colour is : " << colour << ", radius is : " << radius);
+                }
             }
             else if (path[1] == "rectangle")
             {
+                //{"colour":0,"position":[0,0],"height":100,"wide":100}
+                // note : position is the top left point of rectangle
+                if (CHECK_LOG_LEVEL(debug))
+                {
+                    __LOG(debug, "in the rectangle case");
+                }
+
+                int colour = jValue.at("colour").as_integer();
+                int height = jValue.at("height").as_integer();
+                int wide = jValue.at("wide").as_integer();
+                json::array pos = jValue.at("position").as_array();
+
+                if (pos.size() != 2)
+                {
+                    return imageRet::BAD_REQUEST;
+                }
+                int posx = pos.at(0).as_integer();
+                int posy = pos.at(1).as_integer();
+
+                if (CHECK_LOG_LEVEL(debug))
+                {
+                    __LOG(debug, "the rectangle info is : " << posx << ":" << posy << ", colour is : " << colour << ", height is : " << height << ", wide is : " << wide);
+                }
             }
             else if (path[1] == "point")
             {
+                // {"colour":0,"position":[0,0]}
+                if (CHECK_LOG_LEVEL(debug))
+                {
+                    __LOG(debug, "in the point case");
+                }
+
+                int colour = jValue.at("colour").as_integer();
+
+                json::array pos = jValue.at("position").as_array();
+
+                if (pos.size() != 2)
+                {
+                    return imageRet::BAD_REQUEST;
+                }
+                int posx = pos.at(0).as_integer();
+                int posy = pos.at(1).as_integer();
+
+                if (CHECK_LOG_LEVEL(debug))
+                {
+                    __LOG(debug, "the point info is : " << posx << ":" << posy << ", colour is : " << colour);
+                }
             }
             else
             {
@@ -192,9 +270,13 @@ public:
                 {
                     __LOG(debug, "not spuuort path : " << path[1]);
                 }
-                message.reply(status_codes::NotFound);
+                return imageRet::NOT_SUPPORT;
             }
-            message.reply(status_codes::NotFound);
+            // now process post/get.......
+            if (method == methods::POST)
+            {
+            }
+            return imageRet::SUCCESS;
         }
         else
         {
@@ -204,6 +286,7 @@ public:
             {
                 __LOG(debug, "path size is : " << path.size());
             }
+            return imageRet::NOT_SUPPORT;
         }
     }
 
